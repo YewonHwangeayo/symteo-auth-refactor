@@ -7,4 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LoginRequest {
     private String accessToken; // 프론트에서 주는 소셜 Access Token
+    private String deviceId;
 }

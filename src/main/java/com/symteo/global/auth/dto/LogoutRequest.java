@@ -7,4 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LogoutRequest {
     private String refreshToken;
+    private String deviceId;
 }

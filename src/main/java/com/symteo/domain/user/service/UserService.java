@@ -105,7 +105,7 @@ public class UserService {
 
     private void updateRefreshToken(User user, String refreshToken) {
         // 기존 토큰 삭제 (User 객체에서 ID를 꺼내서 넘김)
-        userTokenRepository.deleteAllByUserId(user.getId());
+        userTokenRepository.deleteAllByUser_Id(user.getId());
 
         // 새로운 토큰 생성
         UserTokens newToken = UserTokens.builder()

@@ -142,7 +142,7 @@ public class AuthService {
     }*/
 
     @Transactional
-    public AuthResponse login(String provider, String accessToken) {
+    public AuthResponse login(String provider, String accessToken, String deviceId) {
         // provider 검증 -> 400 처리
         if (!isSupportedProvider(provider)) {
             throw new GeneralException(ErrorStatus._INVALID_PROVIDER);
@@ -153,17 +153,21 @@ public class AuthService {
             throw new GeneralException(ErrorStatus._UNAUTHORIZED);
         }
 
-        // 1. 소셜 서버에서 사용자 정보(식별자) 가져오기
-        SocialUserInfo socialUser;
-        try {
-            socialUser = socialLoadStrategy.getSocialInfo(provider, accessToken);
-        } catch (WebClientResponseException.Unauthorized e) {
-            // 카카오 토큰 invalid/만료 등 -> 401
-            throw new GeneralException(ErrorStatus._UNAUTHORIZED);
-        } catch (WebClientResponseException e) {
-            // 카카오 서버 오류/기타 4xx/5xx -> 500
-            throw new GeneralException(ErrorStatus._SOCIAL_LOGIN_FAILED);
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST);
         }
+
+        // 1. 소셜 서버에서 사용자 정보(식별자) 가져오기
+        SocialUserInfo socialUser = socialLoadStrategy.getSocialInfo(provider, accessToken);
+//        try {
+//            socialUser = socialLoadStrategy.getSocialInfo(provider, accessToken);
+//        } catch (WebClientResponseException.Unauthorized e) {
+//            // 카카오 토큰 invalid/만료 등 -> 401
+//            throw new GeneralException(ErrorStatus._UNAUTHORIZED);
+//        } catch (WebClientResponseException e) {
+//            // 카카오 서버 오류/기타 4xx/5xx -> 500
+//            throw new GeneralException(ErrorStatus._SOCIAL_LOGIN_FAILED);
+//        }
 
         // 2. DB 조회 (없으면 회원가입, 있으면 로그인)
         User user = userRepository.findBySocialTypeAndSocialId(socialUser.getSocialType(), socialUser.getSocialId())
@@ -181,8 +185,9 @@ public class AuthService {
         String appAccessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
         String appRefreshToken = jwtProvider.createRefreshToken(user.getId());
 
-        // 4. Refresh Token 저장
-        saveRefreshToken(user, appRefreshToken);
+        // 4. userId + deviceId를 기준으로 있으면 update, 없으면 insert
+        upsertRefreshToken(user, deviceId, appRefreshToken);
+
 
         // 5. 응답 생성
         return AuthResponse.builder()
@@ -194,6 +199,22 @@ public class AuthService {
                 .build();
 
     }
+
+    private void upsertRefreshToken(User user, String deviceId, String refreshToken) {
+        LocalDateTime expiresAt =  LocalDateTime.now().plusWeeks(2);
+
+        UserTokens token = userTokenRepository.findByUser_IdAndDeviceId(user.getId(), deviceId)
+                .orElseGet(() -> UserTokens.builder()
+                        .user(user)
+                        .deviceId(deviceId)
+                        .refreshToken(refreshToken)
+                        .expiresAt(expiresAt)
+                        .build());
+
+        token.updateRefreshToken(refreshToken, expiresAt);
+        userTokenRepository.save(token);
+    }
+
 
     private boolean isSupportedProvider(String provider) {
         return provider != null && (
@@ -213,18 +234,18 @@ public class AuthService {
         return userRepository.save(newUser);
     }
 
-    // 리프레시 토큰 저장
-    private void saveRefreshToken(User user, String refreshToken) {
-        // 만료 시간은 2주 (14일)
-        LocalDateTime expiresAt = LocalDateTime.now().plusWeeks(2);
-
-        UserTokens token = UserTokens.builder()
-                .user(user)
-                .refreshToken(refreshToken)
-                .expiresAt(expiresAt)
-                .build();
-        userTokenRepository.save(token);
-    }
+//    // 리프레시 토큰 저장
+//    private void saveRefreshToken(User user, String refreshToken) {
+//        // 만료 시간은 2주 (14일)
+//        LocalDateTime expiresAt = LocalDateTime.now().plusWeeks(2);
+//
+//        UserTokens token = UserTokens.builder()
+//                .user(user)
+//                .refreshToken(refreshToken)
+//                .expiresAt(expiresAt)
+//                .build();
+//        userTokenRepository.save(token);
+//    }
 
     @Transactional
     public AuthResponse reissue(String refreshToken) {
@@ -277,6 +298,6 @@ public class AuthService {
 
         user.deleteSoftly();
 
-        userTokenRepository.deleteAllByUserId(userId);
+        userTokenRepository.deleteAllByUser_Id(userId);
     }
 }

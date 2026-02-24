@@ -1,15 +1,14 @@
 package com.symteo.domain.user.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "user_tokens")
 public class UserTokens {
@@ -28,6 +27,9 @@ public class UserTokens {
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column(name = "device_id", nullable = false, length = 128)
+    private String deviceId;
 
     @Builder
     public UserTokens(User user, String refreshToken, LocalDateTime expiresAt) {
