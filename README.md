@@ -3,7 +3,7 @@ Symteo Auth Refactor: 소셜 로그인 인증 구조 개선 프로젝트
 
 
 
-Overview
+## Overview
 
 심터(Symteo)는 사용자의 정신건강 관리를 지원하는 셀프케어 서비스입니다.
 
@@ -13,7 +13,7 @@ Overview
 
 
 
-1. Problem
+## 1. Problem
 
 카카오 로그인 과정에서 발생한 KOE101 오류
 
@@ -27,7 +27,7 @@ Overview
 
 
 
-2. Architecture
+## 2. Architecture
 
 Before: Authorization Code 기반 인증
 
@@ -75,7 +75,7 @@ Client
 
 
 
-3. Technical Decisions
+## 3. Technical Decisions
 
 인증 책임 분리
 
@@ -100,7 +100,7 @@ OAuth 토큰 발급	백엔드	프론트엔드 SDK
 
 
 
-4. Troubleshooting
+## 4. Troubleshooting
 
 KOE101 오류 해결
 
@@ -122,7 +122,7 @@ KOE101 오류 해결
 
 
 
-5. Development Environment
+## 5. Development Environment
 
 프로젝트는 Spring Boot 기반 백엔드 환경에서 개발했습니다.
 
@@ -130,7 +130,7 @@ KOE101 오류 해결
 
 
 
-6. Project Structure
+## 6. Project Structure
 
 프로젝트의 주요 구성 요소는 다음과 같습니다.
 
@@ -143,7 +143,7 @@ KOE101 오류 해결
 
 
 
-7. Retrospective
+## 7. Retrospective
 
 이번 프로젝트에서는 기존 인증 구조에서 발생한 문제를 해결하기 위해 프론트엔드와 백엔드의 역할을 재검토했습니다.
 
