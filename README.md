@@ -1,69 +1,136 @@
 # 🌿 Symteo (심터) - Back-End
+Symteo Auth Refactor
 
-> **답답한 마음, 심터에서 얘기해봐요!**
-> **심터는 사용자의 심리 진단 데이터를 기반으로 맞춤형 AI 상담과 일일 미션을 제공하는 멘탈 케어 플랫폼입니다.**
+소셜 로그인 인증 구조 개선 프로젝트
 
----
+Overview
 
-## 🫂 1. 팀원 정보 및 역할
+심터(Symteo)는 사용자의 정신건강 관리를 지원하는 셀프케어 서비스입니다.
 
-| 이름 | 역할 | 담당 기능 (RQ-ID) |
-| --- | --- | --- |
-| **니카 (이나경)** | **BE Lead** | My심터, 알림 설정, 앱 잠금, 회원 탈퇴 |
-| **젬마 (황예원)** | **Developer** | 로그인/로그아웃, 회원가입, 온보딩 가이드 |
-| **김찌 (전형진)** | **Developer** | AI 맞춤 상담, 심리 진단 테스트 |
-| **에코 (김민지)** | **Developer** | 오늘의 미션, 홈 화면 인터랙션, 진단 리포트 |
+본 리포지토리는 심터 프로젝트에서 발생한 소셜 로그인 인증 문제를 해결하기 위해 인증 구조를 변경한 경험을 정리한 프로젝트입니다.
 
----
+단순한 오류 수정보다 프론트엔드와 백엔드 간 인증 책임을 재설계하고, 기존 인증 흐름의 제약을 해결하는 데 중점을 두었습니다.
 
-## 💡 2. 서비스 개요 (Service Overview)
+1. Problem
 
-현대인의 마음 짐을 덜어주기 위해 **데이터 기반 진단**과 **감성적인 AI 상담**을 결합했습니다.
+카카오 로그인 과정에서 발생한 KOE101 오류
 
-* **To. 사용자**: PHQ-9 등 표준 척도를 통한 정밀 진단과 나만의 성향에 맞는 AI 상담사와의 대화
-* **To. 지속성**: 매일 제공되는 맞춤 미션과 시각화 리포트를 통한 심리 상태 관리
+기존 인증 구조에서는 프론트엔드가 카카오 OAuth 인가 코드를 전달하고, 백엔드가 해당 코드를 이용해 카카오 Access Token을 발급받는 방식을 사용했습니다.
 
----
+그러나 로그인 과정에서 KOE101 오류가 발생했습니다.
 
-## 📌 3. 기술 스택 (Tech Stack)
+문제 분석 과정에서 프론트엔드의 카카오 SDK 설정과 백엔드에서 사용하는 OAuth 클라이언트 정보가 일치하지 않는 문제를 확인했습니다.
 
-* **Framework/Language**: Spring Boot 3.x, Java 17
-* **Build/Database**: Gradle, MySQL, Spring Data JPA
-* **AI & Security**: OpenAI API (GPT-4o), JWT 기반 소셜 로그인
-* **Docs**: Swagger (SpringDoc)
+당시 프론트엔드의 SDK 설정을 직접 수정하기 어려운 상황이었기 때문에, 백엔드에서 인증 흐름을 변경하는 방안을 검토했습니다.
 
----
+2. Architecture
 
-## 📂 4. 프로젝트 구조 및 컨벤션 (Project Structure)
+Before: Authorization Code 기반 인증
 
-본 프로젝트는 **Service-Oriented Architecture (SOA)**와 **MVC 패턴**을 따릅니다.
+Client
+   |
+   | Authorization Code
+   v
+Backend
+   |
+   | Token Request
+   v
+Kakao OAuth Server
+   |
+   | Access Token
+   v
+Backend
+   |
+   | Service JWT
+   v
+Client
 
-### 패키지 구조
+After: Access Token 기반 인증
 
-```text
-Symteo-BE/
-├── 📁 .github/             # Issue/PR 템플릿 및 CI 설정
-├── 📁 src/main/java/com/symteo/
-│   ├── 📁 config/      # 전역 설정 (Security, Swagger, AI API)
-│   ├── 📁 controller/  # iOS 요청 수신 및 응답 반환
-│   ├── 📁 service/     # 비즈니스 로직 (AI 상담 엔진, 척도 계산)
-│   ├── 📁 domain/      # JPA Entity (데이터 모델)
-│   ├── 📁 repository/  # DB 접근 계층
-│   ├── 📁 dto/         # Request/Response 객체 및 Validation
-│   └── 📁 global/      # ExceptionHandler, 공통 Util
+Client
+   |
+   | Kakao Access Token
+   v
+Backend
+   |
+   | Token Validation
+   v
+Kakao API
+   |
+   | User Information
+   v
+Backend
+   |
+   | Service JWT
+   v
+Client
 
-```
+변경된 구조에서는 프론트엔드가 카카오 SDK를 통해 발급받은 Access Token을 백엔드에 전달합니다.
 
-### 코드 스타일 및 규칙
+백엔드는 전달받은 토큰을 검증하고 사용자 정보를 확인한 후, 서비스에서 사용할 JWT를 발급하도록 인증 흐름을 변경했습니다.
 
-* **기본 스타일**: 들여쓰기 Space 2칸, 문자열 Double Quote(`" "`) 사용
-* **커밋 메시지**: `타입: 내용 (#이슈번호)` (예: `feat: add AI chat logic (#12)`)
-* **브랜치 전략**: `이름/이슈번호/기능명` (예: `niicka/12/lock-settings`)
+3. Technical Decisions
 
----
+인증 책임 분리
 
-## 🤝 5. PR 및 머지 규칙
+기존 방식에서는 백엔드가 OAuth 인가 코드를 Access Token으로 교환하는 역할을 담당했습니다.
 
-* **승인 조건**: 리뷰어 **1명 이상의 승인(Approve)** 필수
-* **머지 방식**: **Squash & Merge** (커밋 히스토리 관리)
-* **임의 머지**: 오타, 단순 주석, README 수정 시에만 가능 (사후 보고 필수)
+변경된 방식에서는 외부 OAuth 토큰 발급과 서비스 인증을 분리했습니다.
+
+구분	기존 구조	변경 구조
+OAuth 토큰 발급	백엔드	프론트엔드 SDK
+백엔드 입력값	Authorization Code	Access Token
+외부 토큰 검증	토큰 교환 과정	백엔드에서 검증
+서비스 인증	JWT	JWT
+변경 목적	기존 인증 흐름 유지	SDK 설정 제약 해결
+
+기술적 고려사항
+
+외부 Access Token을 전달받는 방식에서는 백엔드가 해당 토큰을 신뢰하기 전에 유효성을 검증해야 합니다.
+
+따라서 외부 OAuth 인증과 내부 서비스 인증을 구분하고, 검증된 사용자 정보를 바탕으로 서비스 JWT를 발급하는 구조를 사용했습니다.
+
+4. Troubleshooting
+
+KOE101 오류 해결
+
+문제
+
+카카오 로그인 과정에서 OAuth 클라이언트 설정과 관련된 오류가 발생했습니다.
+
+원인 분석
+
+프론트엔드 SDK 설정과 백엔드 OAuth 요청에 사용되는 클라이언트 정보의 차이를 확인했습니다.
+
+해결
+
+프론트엔드에서 발급한 Access Token을 백엔드에 전달하고, 백엔드에서 검증한 뒤 서비스 JWT를 발급하도록 인증 흐름을 변경했습니다.
+
+결과
+
+프론트엔드의 기존 SDK 설정을 유지하면서 백엔드 인증 흐름을 변경해 로그인 문제를 해결했습니다.
+
+5. Development Environment
+
+프로젝트는 Spring Boot 기반 백엔드 환경에서 개발했습니다.
+
+빌드 및 실행에 필요한 구체적인 설정은 리포지토리의 Gradle 설정과 환경변수 구성을 기준으로 확인할 수 있습니다.
+
+6. Project Structure
+
+프로젝트의 주요 구성 요소는 다음과 같습니다.
+
+* Controller: 인증 요청 및 응답 처리
+* Service: 인증 흐름 및 사용자 처리
+* Repository: 사용자 데이터 접근
+* Security: 인증 및 접근 제어 관련 설정
+
+실제 패키지 경로와 파일별 역할은 소스코드 구조에 맞춰 추가할 예정입니다.
+
+7. Retrospective
+
+이번 프로젝트에서는 기존 인증 구조에서 발생한 문제를 해결하기 위해 프론트엔드와 백엔드의 역할을 재검토했습니다.
+
+특히 기존 구현을 유지하는 것만이 최선의 선택은 아니며, 기술적 제약과 협업 상황을 고려해 시스템 구조를 변경할 수 있다는 점을 배웠습니다.
+
+또한 외부 OAuth 인증과 내부 서비스 인증을 구분하여 설계하는 과정에서 인증 흐름과 책임 분리의 중요성을 이해하게 되었습니다.
